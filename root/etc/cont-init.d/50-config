@@ -1,0 +1,58 @@
+#!/usr/bin/with-contenv bash
+
+echo "DB_HOST = $DB_HOST"
+echo "DB_PORT = $DB_PORT"
+echo "DB_DATABASE = $DB_DATABASE"
+echo "DB_USERNAME = $DB_USERNAME"
+echo "DB_PASSWORD = $DB_PASSWORD"
+
+# set default values for variables
+declare -A PSBS_CONF
+PSBS_CONF[DB_HOST]=${DB_HOST:-mariadb}
+PSBS_CONF[DB_PORT]=${DB_PORT:-3306}
+PSBS_CONF[DB_DATABASE]=${DB_DATABASE:-psbs}
+PSBS_CONF[DB_USERNAME]=${DB_USERNAME:-root}
+PSBS_CONF[DB_PASSWORD]=${DB_PASSWORD:-root}
+
+cd /app/psbs
+
+ln -sf /config/env /app/psbs/.env
+
+if [ ! -d "/data/storage" ]; then
+    echo "linking storage directory"
+    mv /app/psbs/storage /data/storage
+fi
+
+rm -rf /app/psbs/storage
+ln -sf /data/storage /app/psbs/storage
+
+if [ ! -f "/config/.env" ]; then
+    echo "creating initial .env file..."
+    mv /defaults/env /config/env
+
+	for KEY in "${!PSBS_CONF[@]}"; do \
+	if [[ ${PSBS_CONF[$KEY]} == "" ]]; then \
+	:
+	else sed -i 's|{{'$KEY'}}|'${PSBS_CONF[$KEY]}'|g' /config/env
+	fi
+	done
+
+    echo "bootstrapping laravel..."
+
+    echo "  generating new key"
+    php artisan key:generate
+    echo "  migrating database tables"
+    php artisan migrate
+    echo "  seeding database"
+    php artisan db:seed
+    echo "  installing passport"
+    php artisan passport:install
+fi
+
+"migrating tables in case of updates"
+php artisan migrate
+
+chown -R abc:abc \
+    /app/psbs \
+    /data \
+    /config
