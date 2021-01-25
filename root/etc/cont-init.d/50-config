@@ -1,5 +1,9 @@
 #!/usr/bin/with-contenv bash
 
+mkdir -p /data
+echo "waiting for DB container to come up..."
+sleep 10
+
 echo "DB_HOST = $DB_HOST"
 echo "DB_PORT = $DB_PORT"
 echo "DB_DATABASE = $DB_DATABASE"
@@ -14,6 +18,9 @@ PSBS_CONF[DB_DATABASE]=${DB_DATABASE:-psbs}
 PSBS_CONF[DB_USERNAME]=${DB_USERNAME:-root}
 PSBS_CONF[DB_PASSWORD]=${DB_PASSWORD:-root}
 
+echo "ensuring database exists..."
+mysql -u ${PSBS_CONF[DB_USERNAME]} -p${PSBS_CONF[DB_PASSWORD]} --host ${PSBS_CONF[DB_HOST]} -e "create database ${PSBS_CONF[DB_DATABASE]};"
+
 cd /app/psbs
 
 ln -sf /config/env /app/psbs/.env
@@ -26,7 +33,7 @@ fi
 rm -rf /app/psbs/storage
 ln -sf /data/storage /app/psbs/storage
 
-if [ ! -f "/config/.env" ]; then
+if [ ! -f "/config/env" ]; then
     echo "creating initial .env file..."
     mv /defaults/env /config/env
 
@@ -49,7 +56,7 @@ if [ ! -f "/config/.env" ]; then
     php artisan passport:install
 fi
 
-"migrating tables in case of updates"
+echo "migrating tables in case of updates"
 php artisan migrate
 
 chown -R abc:abc \
