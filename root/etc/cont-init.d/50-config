@@ -1,5 +1,12 @@
 #!/usr/bin/with-contenv bash
 
+cd /app/psbs
+echo "updating repo..."
+git pull
+
+echo "running composer install..."
+composer install
+
 mkdir -p /data
 echo "waiting for DB container to come up..."
 sleep 10
